@@ -26,9 +26,13 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private ArrayList<Song> songs;
     //current position
     private int songPosn;
+    //binder
     private final IBinder musicBind = new MusicBinder();
+    //current song title
     private String songTitle="";
+    //notification ID
     private static final int NOTIFY_ID=1;
+    //shuffle flag and random
     private boolean shuffle=false;
     private Random rand;
 
@@ -80,33 +84,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         return false;
     }
 
-    @Override
-    public void onPrepared(MediaPlayer mp) {
-        //start playback
-        mp.start();
-
-        Intent notIntent = new Intent(this, Visualizer.class);
-        notIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendInt = PendingIntent.getActivity(this, 0,
-                notIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        Notification.Builder builder = new Notification.Builder(this);
-
-        builder.setContentIntent(pendInt)
-                .setSmallIcon(R.drawable.play)
-                .setTicker(songTitle)
-                .setOngoing(true)
-                .setContentTitle("Playing")
-        .setContentText(songTitle);
-        Notification not = builder.build();
-
-        startForeground(NOTIFY_ID, not);
-    }
-
-    public void setSong(int songIndex){
-        songPosn=songIndex;
-    }
-
     public void playSong(){
         player.reset();
         //get song
@@ -129,10 +106,17 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         player.prepareAsync();
     }
 
+    public void setSong(int songIndex){
+        songPosn=songIndex;
+    }
 
     @Override
-    public void onDestroy() {
-        stopForeground(true);
+    public void onCompletion(MediaPlayer mp) {
+        //if the playback has reached the end of the track
+        if(player.getCurrentPosition() > 0){
+            mp.reset();
+            playNext();
+        }
     }
 
     @Override
@@ -142,11 +126,26 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     }
 
     @Override
-    public void onCompletion(MediaPlayer mp) {
-        if(player.getCurrentPosition() > 0){
-            mp.reset();
-            playNext();
-        }
+    public void onPrepared(MediaPlayer mp) {
+        //start playback
+        mp.start();
+
+        Intent notIntent = new Intent(this, Visualizer.class);
+        notIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pendInt = PendingIntent.getActivity(this, 0,
+                notIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification.Builder builder = new Notification.Builder(this);
+
+        builder.setContentIntent(pendInt)
+                .setSmallIcon(R.drawable.play)
+                .setTicker(songTitle)
+                .setOngoing(true)
+                .setContentTitle("Playing")
+        .setContentText(songTitle);
+        Notification not = builder.build();
+
+        startForeground(NOTIFY_ID, not);
     }
 
     public int getPosn(){
@@ -193,6 +192,11 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             if (songPosn != songs.size()) songPosn = 0;
         }
         playSong();
+    }
+
+    @Override
+    public void onDestroy() {
+        stopForeground(true);
     }
 
     public void setShuffle(){

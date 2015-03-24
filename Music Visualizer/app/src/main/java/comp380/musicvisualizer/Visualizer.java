@@ -30,12 +30,19 @@ import android.widget.MediaController.MediaPlayerControl;
 
 public class Visualizer extends Activity implements MediaPlayerControl {
 
+    //song list variables
     private ArrayList<Song> songList;
     private ListView songView;
+
+    //service
     private MusicService musicSrv;
     private Intent playIntent;
+    //binding
     private boolean musicBound=false;
+    //controller
     private MusicController controller;
+
+    //playback pause flags
     private boolean paused=false;
     private boolean playbackPaused=false;
 
@@ -43,29 +50,26 @@ public class Visualizer extends Activity implements MediaPlayerControl {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_visualizer);
-        //this part needs some editing
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        /*if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, new PlaceholderFragment())
-                    .commit();
-        }*/
 
+        //get listview
         songView = (ListView)findViewById(R.id.song_list);
+        //instantiate the list
         songList = new ArrayList<Song>();
-
+        //get songs from device
         getSongList();
 
-        //sorts songs alphabetically
+        //sorts songs alphabetically by title
         Collections.sort(songList, new Comparator<Song>(){
             public int compare(Song a, Song b){
                 return a.getTitle().compareTo(b.getTitle());
             }
         });
 
+        //create and set adapter
         SongAdapter songAdt = new SongAdapter(this, songList);
         songView.setAdapter(songAdt);
 
+        //setup controller
         setController();
     }
 
@@ -84,9 +88,32 @@ public class Visualizer extends Activity implements MediaPlayerControl {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+
             musicBound = false;
         }
     };
+
+    //start and bind the service when the activity starts
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if(playIntent==null){
+            playIntent = new Intent(this, MusicService.class);
+            bindService(playIntent, musicConnection, Context.BIND_AUTO_CREATE);
+            startService(playIntent);
+        }
+    }
+
+    public void songPicked(View view){
+        musicSrv.setSong(Integer.parseInt(view.getTag().toString()));
+        musicSrv.playSong();
+
+        if(playbackPaused){
+            setController();
+            playbackPaused=false;
+        }
+        controller.show(0);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -110,35 +137,13 @@ public class Visualizer extends Activity implements MediaPlayerControl {
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    protected void onDestroy() {
-        stopService(playIntent);
-        musicSrv=null;
-        super.onDestroy();
-    }
-
-    /**
-     * A placeholder fragment containing a simple view.
-     */
-    public static class PlaceholderFragment extends Fragment {
-
-        public PlaceholderFragment() {
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_visualizer, container, false);
-            return rootView;
-        }
-    }
-
+    //this method gets the songs from the phone/device
     public void getSongList(){
-
+        //query to external audio
         ContentResolver musicResolver = getContentResolver();
         Uri musicUri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         Cursor musicCursor = musicResolver.query(musicUri, null, null, null, null);
-
+        //iterate over results if valid
         if(musicCursor!=null && musicCursor.moveToFirst()){
             //get columns
             int titleColumn = musicCursor.getColumnIndex
@@ -158,17 +163,67 @@ public class Visualizer extends Activity implements MediaPlayerControl {
         }
     }
 
-    public void songPicked(View view){
-        musicSrv.setSong(Integer.parseInt(view.getTag().toString()));
-        musicSrv.playSong();
-
-        if(playbackPaused){
-            setController();
-            playbackPaused=false;
-        }
-        controller.show(0);
+    @Override
+    public boolean canPause() {
+        return true;
     }
 
+    @Override
+    public boolean canSeekBackward() {
+        return true;
+    }
+
+    @Override
+    public boolean canSeekForward() {
+        return true;
+    }
+
+    @Override
+    public int getAudioSessionId() {
+        return 0;
+    }
+
+    @Override
+    public int getBufferPercentage() {
+        return 0;
+    }
+
+    @Override
+    public int getCurrentPosition() {
+        if(musicSrv!=null && musicBound && musicSrv.isPng())
+            return musicSrv.getPosn();
+        else return 0;
+    }
+
+    @Override
+    public int getDuration() {
+        if(musicSrv!=null && musicBound && musicSrv.isPng())
+            return musicSrv.getDur();
+        else return 0;
+    }
+
+    @Override
+    public boolean isPlaying() {
+        if(musicSrv!=null && musicBound)
+            return musicSrv.isPng();
+        return false;
+    }
+
+    @Override
+    public void pause() {
+        musicSrv.pausePlayer();
+        playbackPaused=true;
+    }
+
+    @Override
+    public void seekTo(int pos) {
+        musicSrv.seek(pos);
+    }
+
+    @Override
+    public void start() {
+        musicSrv.go();
+    }
     private void setController(){
         //set the controller up
         controller = new MusicController(this);
@@ -213,69 +268,6 @@ public class Visualizer extends Activity implements MediaPlayerControl {
     }
 
     @Override
-    public boolean canPause() {
-        return true;
-    }
-
-    @Override
-    public boolean canSeekBackward() {
-        return true;
-    }
-
-    @Override
-    public boolean canSeekForward() {
-        return true;
-    }
-
-    @Override
-    public int getAudioSessionId() {
-        return 0;
-    }
-
-    @Override
-    public int getCurrentPosition() {
-        if(musicSrv!=null && musicBound && musicSrv.isPng())
-        return musicSrv.getPosn();
-        else return 0;
-    }
-
-    @Override
-    public int getDuration() {
-        if(musicSrv!=null && musicBound && musicSrv.isPng())
-        return musicSrv.getDur();
-        else return 0;
-    }
-
-    @Override
-    public boolean isPlaying() {
-        if(musicSrv!=null && musicBound)
-        return musicSrv.isPng();
-        return false;
-    }
-
-    @Override
-    public int getBufferPercentage() {
-        return 0;
-    }
-
-    @Override
-    public void pause() {
-        musicSrv.pausePlayer();
-        playbackPaused=true;
-        musicSrv.pausePlayer();
-    }
-
-    @Override
-    public void seekTo(int pos) {
-        musicSrv.seek(pos);
-    }
-
-    @Override
-    public void start() {
-        musicSrv.go();
-    }
-
-    @Override
     protected void onPause(){
         super.onPause();
         paused=true;
@@ -294,5 +286,12 @@ public class Visualizer extends Activity implements MediaPlayerControl {
     protected void onStop() {
         controller.hide();
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        stopService(playIntent);
+        musicSrv=null;
+        super.onDestroy();
     }
 }
