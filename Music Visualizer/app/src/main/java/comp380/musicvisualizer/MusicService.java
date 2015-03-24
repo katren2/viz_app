@@ -173,8 +173,12 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     }
 
     public void playPrev(){
-        songPosn--;
-        if(songPosn != 0) songPosn=songs.size()-1;
+        if(songPosn == 0){
+            songPosn=songs.size()-1;
+        }
+        else{
+            songPosn--;
+        }
         playSong();
     }
 
@@ -188,8 +192,12 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             songPosn=newSong;
         }
         else{
-            songPosn++;
-            if (songPosn != songs.size()) songPosn = 0;
+            if (songPosn == songs.size()-1){
+                songPosn = 0;
+            }
+            else{
+                songPosn++;
+            }
         }
         playSong();
     }
