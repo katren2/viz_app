@@ -135,6 +135,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         PendingIntent pendInt = PendingIntent.getActivity(this, 0,
                 notIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
+        //displays a notification at the top of the screen
+        //with song title and play icon
         Notification.Builder builder = new Notification.Builder(this);
 
         builder.setContentIntent(pendInt)

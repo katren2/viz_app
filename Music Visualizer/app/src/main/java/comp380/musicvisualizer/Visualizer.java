@@ -224,6 +224,7 @@ public class Visualizer extends Activity implements MediaPlayerControl {
     public void start() {
         musicSrv.go();
     }
+
     private void setController(){
         //set the controller up
         controller = new MusicController(this);
